@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Dotted Line Drawing</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Show tools" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <div id="sidebarScrim" class="sidebar-scrim" aria-hidden="true"></div>
+
+    <main class="app-shell">
+      <aside class="side-panel" aria-label="Drawing controls">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">DL</div>
+          <div>
+            <h1>Dotted Draw</h1>
+            <p>Trace, color, and practice.</p>
+          </div>
+        </div>
+
+        <button id="settingsOpen" class="settings-entry" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2a2 2 0 0 1-4 0V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 0 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8a2 2 0 0 1 0-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7A2 2 0 0 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 .9-1.6V2.8a2 2 0 0 1 4 0V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 0 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6.9h.2a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+          <span data-i18n="settings">Settings</span>
+        </button>
+
+        <section class="control-group">
+          <div class="group-label" data-i18n="topic">Topic</div>
+          <div class="topic-tabs" id="topicTabs" role="tablist" aria-label="Template topics"></div>
+        </section>
+
+        <section class="control-group">
+          <label class="group-label" for="templateSelect" data-i18n="template">Template</label>
+          <select id="templateSelect"></select>
+          <div class="template-strip" id="templateStrip" aria-label="Template previews"></div>
+        </section>
+
+        <section class="control-group">
+          <div class="group-label" data-i18n="color">Color</div>
+          <div class="color-grid" id="colorGrid" aria-label="Drawing colors"></div>
+        </section>
+
+        <section class="control-group">
+          <label class="group-label" for="brushSize" data-i18n="brush">Brush</label>
+          <div class="range-row">
+            <input id="brushSize" type="range" min="3" max="34" value="12">
+            <output id="brushOutput" for="brushSize">12</output>
+          </div>
+        </section>
+
+        <section class="tool-grid" aria-label="Drawing actions">
+          <button id="drawMode" class="tool-button active" type="button" title="Draw" aria-label="Draw">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 10-10a2.8 2.8 0 0 0-4-4l-10 10L4 20Z"/><path d="m13.5 5.5 5 5"/></svg>
+          </button>
+          <button id="eraseMode" class="tool-button" type="button" title="Erase" aria-label="Erase">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 21-4-4 10-10a3 3 0 0 1 4 0l4 4-10 10H7Z"/><path d="m13 7 4 4"/><path d="M14 21h7"/></svg>
+          </button>
+          <button id="undoButton" class="tool-button" type="button" title="Undo" aria-label="Undo">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
+          </button>
+          <button id="redoButton" class="tool-button" type="button" title="Redo" aria-label="Redo">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>
+          </button>
+          <button id="clearButton" class="tool-button" type="button" title="Clear drawing" aria-label="Clear drawing">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m9 11 .5 7"/><path d="m15 11-.5 7"/><path d="M6 6l1 15h10l1-15"/></svg>
+          </button>
+          <button id="saveButton" class="tool-button" type="button" title="Save picture" aria-label="Save picture">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          </button>
+        </section>
+      </aside>
+
+      <section class="workspace" aria-label="Drawing board">
+        <div class="stage-header">
+          <div>
+            <h2 id="templateName">Letter A</h2>
+            <p id="templateHint">Follow the dotted path with your finger or pencil.</p>
+          </div>
+          <div class="status-pill" id="statusPill">Ready</div>
+        </div>
+
+        <div class="drawing-card">
+          <svg id="templateSvg" class="template-svg" viewBox="0 0 900 700" role="img" aria-label="Selected dotted drawing template"></svg>
+          <canvas id="drawingCanvas" width="900" height="700" aria-label="Drawing surface"></canvas>
+          <aside id="samplePanel" class="sample-panel" aria-label="Template sample">
+            <button id="sampleToggle" class="sample-toggle" type="button" aria-label="Hide sample">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6A2 2 0 0 0 13.4 13.4"/><path d="M9.9 4.2A10.7 10.7 0 0 1 12 4c5 0 8.5 4.1 10 8a14.6 14.6 0 0 1-3.1 4.8"/><path d="M6.2 6.3A14.2 14.2 0 0 0 2 12c1.5 3.9 5 8 10 8 1.4 0 2.7-.3 3.9-.9"/></svg>
+            </button>
+            <div class="sample-label" data-i18n="sample">Sample</div>
+            <svg id="sampleSvg" viewBox="0 0 900 700" aria-hidden="true"></svg>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <section id="settingsPanel" class="settings-panel" aria-hidden="true" aria-label="Settings">
+      <div class="settings-card" role="dialog" aria-modal="true">
+        <div class="settings-head">
+          <h2 data-i18n="settings">Settings</h2>
+          <button id="settingsClose" class="icon-button" type="button" aria-label="Close settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+
+        <div class="setting-row">
+          <label for="backgroundSelect" data-i18n="background">Background</label>
+          <select id="backgroundSelect">
+            <option value="grid">Grid</option>
+            <option value="plain">Plain</option>
+            <option value="paper">Paper</option>
+            <option value="sky">Sky</option>
+          </select>
+        </div>
+
+        <div class="setting-row">
+          <label for="themeSelect" data-i18n="theme">Theme</label>
+          <select id="themeSelect">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+
+        <div class="setting-row">
+          <label for="languageSelect" data-i18n="language">Language</label>
+          <select id="languageSelect">
+            <option value="en">EN</option>
+            <option value="vi">VI</option>
+          </select>
+        </div>
+
+        <button class="login-button" type="button" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+          <span data-i18n="loginSoon">Login coming later</span>
+        </button>
+      </div>
+    </section>
+
+    <script src="app.js"></script>
+  </body>
+</html>
