@@ -33,10 +33,8 @@ const svgStyles = `
   <style>
     .template-line{fill:none;stroke:#24352f;stroke-width:12;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 22;opacity:.58}
     .template-shape{fill:rgba(255,213,91,.12);stroke:#24352f;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 21;opacity:.6}
-    .template-text{fill:none;stroke:#24352f;stroke-width:11;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 22;opacity:.58;font-family:Arial,Helvetica,sans-serif;font-size:520px;font-weight:800}
-    .sample-line,.sample-shape,.sample-text{fill:none;stroke:#2f7f75;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+    .sample-line,.sample-shape{fill:none;stroke:#2f7f75;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
     .sample-shape{fill:rgba(255,213,91,.2)}
-    .sample-text{font-family:Arial,Helvetica,sans-serif;font-size:520px;font-weight:800}
     .guide-fill{fill:rgba(47,127,117,.06);stroke:none}
   </style>
 `;
@@ -97,25 +95,67 @@ const settings = {
   sampleVisible: localStorage.getItem("dottedDrawSampleVisible") !== "false"
 };
 
-function textTemplate(id, name, value, hint, size = 520, x = 450, y = 540) {
-  return {
-    id,
-    name,
-    hint,
-    markup: `<text class="template-text" x="${x}" y="${y}" text-anchor="middle" style="font-size:${size}px">${value}</text>`
-  };
-}
-
 function shapeTemplate(id, name, hint, markup) {
   return { id, name, hint, markup };
 }
 
+const letterLinePaths = {
+  A: "M260 600 L450 115 L640 600 M330 420 L570 420",
+  B: "M300 105 L300 600 M300 110 C590 95 610 340 300 350 M300 350 C630 350 610 610 300 600",
+  C: "M650 170 C530 70 260 105 210 330 C150 580 455 675 655 515",
+  D: "M295 105 L295 600 M295 105 C650 115 720 580 295 600",
+  E: "M620 110 L300 110 L300 600 L625 600 M300 350 L550 350",
+  F: "M300 600 L300 110 L625 110 M300 350 L550 350",
+  G: "M650 175 C530 70 260 100 210 330 C150 585 455 680 655 515 L655 395 L510 395",
+  H: "M270 110 L270 600 M630 110 L630 600 M270 350 L630 350",
+  I: "M300 110 L600 110 M450 110 L450 600 M300 600 L600 600",
+  J: "M300 110 L620 110 M500 110 L500 515 C500 650 250 650 250 500",
+  K: "M290 110 L290 600 M640 110 L290 360 L660 600",
+  L: "M300 110 L300 600 L630 600",
+  M: "M230 600 L230 110 L450 430 L670 110 L670 600",
+  N: "M270 600 L270 110 L630 600 L630 110",
+  O: "M450 105 C185 105 185 605 450 605 C715 605 715 105 450 105Z",
+  P: "M300 600 L300 110 M300 110 C620 90 620 360 300 360",
+  Q: "M450 105 C185 105 185 605 450 605 C715 605 715 105 450 105Z M535 510 L660 625",
+  R: "M300 600 L300 110 M300 110 C620 90 620 350 300 350 L650 600",
+  S: "M640 165 C520 70 280 95 260 245 C235 410 640 330 625 505 C610 665 340 650 245 545",
+  T: "M220 110 L680 110 M450 110 L450 600",
+  U: "M270 110 L270 455 C270 650 630 650 630 455 L630 110",
+  V: "M245 110 L450 600 L655 110",
+  W: "M190 110 L310 600 L450 260 L590 600 L710 110",
+  X: "M260 110 L640 600 M640 110 L260 600",
+  Y: "M245 110 L450 350 L655 110 M450 350 L450 600",
+  Z: "M250 110 L650 110 L250 600 L650 600"
+};
+
+const numberLinePaths = {
+  0: "M450 105 C215 105 215 605 450 605 C685 605 685 105 450 105Z M330 545 L570 165",
+  1: "M360 230 L450 110 L450 600 M335 600 L565 600",
+  2: "M270 235 C300 95 635 85 640 250 C645 410 325 405 280 600 L650 600",
+  3: "M285 150 C430 70 650 115 600 315 C720 390 625 650 300 565",
+  4: "M600 600 L600 110 L240 430 L680 430",
+  5: "M635 110 L305 110 L275 330 C470 285 665 365 610 520 C565 650 360 650 250 545",
+  6: "M610 150 C390 75 250 265 270 445 C290 650 630 650 625 450 C620 300 360 300 275 445",
+  7: "M250 110 L650 110 L390 600",
+  8: "M450 340 C250 305 270 105 450 105 C630 105 650 305 450 340 C220 380 250 605 450 605 C650 605 680 380 450 340Z",
+  9: "M625 260 C625 90 285 90 275 275 C265 460 545 470 625 275 C625 475 520 625 300 560"
+};
+
+function lineTemplate(id, name, path, hint) {
+  return {
+    id,
+    name,
+    hint,
+    markup: `<path class="template-line" d="${path}"/>`
+  };
+}
+
 const templates = {
   ABC: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) =>
-    textTemplate(`letter-${letter.toLowerCase()}`, `Letter ${letter}`, letter, `Trace uppercase ${letter}.`)
+    lineTemplate(`letter-${letter.toLowerCase()}`, `Letter ${letter}`, letterLinePaths[letter], `Trace uppercase ${letter}.`)
   ),
   Numbers: "0123456789".split("").map((number) =>
-    textTemplate(`number-${number}`, `Number ${number}`, number, `Trace number ${number}.`)
+    lineTemplate(`number-${number}`, `Number ${number}`, numberLinePaths[number], `Trace number ${number}.`)
   ),
   Animal: [
     shapeTemplate("cat", "Cat", "Trace the ears, face, whiskers, and tail.", `
@@ -448,7 +488,6 @@ function makeSampleMarkup(markup) {
   return markup
     .replaceAll("template-line", "sample-line")
     .replaceAll("template-shape", "sample-shape")
-    .replaceAll("template-text", "sample-text")
     .replaceAll("guide-fill", "sample-guide");
 }
 
