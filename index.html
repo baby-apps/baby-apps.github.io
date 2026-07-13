@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Baby Drawing</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+body{background:#f0f4ff;font-family:'Nunito',sans-serif;overflow:hidden;width:100vw;height:100vh;display:flex;flex-direction:column;}
+
+/* ── TOP BAR ── */
+#topbar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;background:#fff;
+  border-bottom:2px solid #e8eaf6;flex-shrink:0;
+  height:54px;
+}
+#picker-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 14px;border-radius:20px;
+  border:2px solid #7c83e8;background:#eef0ff;
+  font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;color:#5c63d8;
+  cursor:pointer;white-space:nowrap;flex:1;min-width:0;
+  touch-action:manipulation;
+}
+#picker-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nav-btn{
+  width:40px;height:40px;border-radius:12px;
+  border:2px solid #e0e0e0;background:#fafafa;
+  font-size:20px;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:manipulation;color:#555;transition:transform 0.1s;
+}
+.nav-btn:active{transform:scale(0.9);background:#eef0ff;}
+.nav-btn:disabled{opacity:0.3;pointer-events:none;}
+#tpl-label{font-family:'Fredoka One',cursive;font-size:15px;color:#5c63d8;min-width:52px;text-align:center;flex-shrink:0;}
+
+/* ── CANVAS ── */
+#canvas-area{flex:1;position:relative;overflow:hidden;touch-action:none;}
+#template-canvas,#draw-canvas{position:absolute;top:0;left:0;}
+#template-canvas{pointer-events:none;}
+#draw-canvas{cursor:crosshair;touch-action:none;}
+
+/* ── HINT THUMBNAIL ── */
+#hint-thumb{
+  position:absolute;top:10px;right:10px;
+  width:72px;height:72px;border-radius:14px;
+  background:#fff;border:2px solid #c5caff;
+  overflow:hidden;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 0.15s;z-index:10;
+}
+#hint-thumb:active{transform:scale(0.93);}
+#hint-thumb canvas{width:100%;height:100%;}
+#hint-label{position:absolute;bottom:0;left:0;right:0;background:rgba(92,99,216,0.82);color:#fff;font-size:9px;font-weight:800;text-align:center;padding:2px 0;border-radius:0 0 12px 12px;}
+
+/* ── HINT OVERLAY ── */
+#hint-overlay{
+  position:absolute;inset:0;background:rgba(30,30,60,0.55);
+  display:flex;align-items:center;justify-content:center;
+  z-index:20;opacity:0;pointer-events:none;transition:opacity 0.2s;
+}
+#hint-overlay.open{opacity:1;pointer-events:all;}
+#hint-big{
+  width:min(80vw,80vh);height:min(80vw,80vh);
+  background:#fff;border-radius:20px;border:3px solid #c5caff;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  transform:scale(0.9);transition:transform 0.2s;
+}
+#hint-overlay.open #hint-big{transform:scale(1);}
+#hint-big canvas{width:100%;height:100%;}
+#hint-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:#fff;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#888;}
+
+/* ── TRACE HINT ── */
+#trace-hint{
+  position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  background:rgba(255,255,255,0.92);border-radius:20px;
+  padding:6px 16px;font-size:12px;font-weight:700;color:#aaa;
+  pointer-events:none;transition:opacity 0.5s;white-space:nowrap;
+}
+
+/* ── BOTTOM BAR ── */
+#bottombar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;background:#fff;
+  border-top:2px solid #e8eaf6;flex-shrink:0;
+  height:64px;gap:10px;
+}
+
+/* current color dot (opens picker) */
+#color-trigger{
+  width:38px;height:38px;border-radius:50%;
+  border:3px solid #333;cursor:pointer;flex-shrink:0;
+  transition:transform 0.1s;touch-action:manipulation;
+  position:relative;
+}
+#color-trigger:active{transform:scale(0.9);}
+
+/* brush size row */
+.brush-btn{
+  width:36px;height:36px;border-radius:10px;
+  border:2px solid #e0e0e0;background:#fafafa;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:transform 0.1s;touch-action:manipulation;
+}
+.brush-btn:active{transform:scale(0.9);}
+.brush-btn.active{background:#eef0ff;border-color:#7c83e8;}
+
+.action-btn{
+  padding:8px 14px;border-radius:14px;
+  border:2px solid #e0e0e0;background:#fafafa;
+  font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;color:#555;
+  cursor:pointer;flex-shrink:0;white-space:nowrap;
+  touch-action:manipulation;transition:transform 0.1s;
+}
+.action-btn:active{transform:scale(0.93);}
+.action-btn.danger{color:#e53935;border-color:#ffcdd2;}
+.action-btn.danger:active{background:#ffebee;}
+
+/* ── COLOR POPUP ── */
+#color-popup{
+  position:absolute;bottom:74px;left:12px;
+  background:#fff;border-radius:18px;
+  border:2px solid #e8eaf6;
+  padding:12px;z-index:30;
+  display:none;
+  box-shadow:0 4px 24px rgba(92,99,216,0.18);
+}
+#color-popup.open{display:block;}
+#color-grid{display:grid;grid-template-columns:repeat(6,36px);gap:8px;}
+.cpick{
+  width:36px;height:36px;border-radius:50%;
+  border:3px solid transparent;cursor:pointer;
+  transition:transform 0.1s;touch-action:manipulation;
+}
+.cpick:active{transform:scale(0.88);}
+.cpick.active{border-color:#333;transform:scale(1.15);}
+#popup-close-area{position:fixed;inset:0;z-index:29;display:none;}
+#popup-close-area.open{display:block;}
+
+/* ── MODAL ── */
+#overlay{position:fixed;inset:0;background:rgba(60,60,100,0.45);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+#overlay.open{opacity:1;pointer-events:all;}
+#modal{background:#fff;border-radius:24px;width:min(94vw,520px);max-height:82vh;display:flex;flex-direction:column;overflow:hidden;transform:scale(0.94);transition:transform 0.2s;}
+#overlay.open #modal{transform:scale(1);}
+#modal-header{padding:14px 16px 0;display:flex;flex-direction:column;gap:8px;flex-shrink:0;}
+#modal-title{font-family:'Fredoka One',cursive;font-size:18px;color:#5c63d8;}
+#topic-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+.tab-btn{padding:5px 12px;border-radius:16px;border:2px solid #e0e0e0;background:#fafafa;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;color:#777;cursor:pointer;touch-action:manipulation;}
+.tab-btn.active{background:#eef0ff;border-color:#7c83e8;color:#5c63d8;}
+#modal-grid-wrap{flex:1;overflow-y:auto;padding:12px 16px 16px;}
+#modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:10px;}
+.grid-item{aspect-ratio:1;border-radius:14px;border:2px solid #e8eaf6;background:#f8f9ff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;touch-action:manipulation;transition:transform 0.1s;}
+.grid-item:active{transform:scale(0.92);}
+.grid-item.active{border-color:#7c83e8;background:#eef0ff;}
+.grid-item canvas{pointer-events:none;}
+.grid-item-label{font-size:11px;font-weight:800;color:#aaa;font-family:'Nunito',sans-serif;text-align:center;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <button id="picker-btn"><span id="picker-label">ABC · A</span> ▾</button>
+  <button class="nav-btn" id="prevBtn">←</button>
+  <span id="tpl-label">A</span>
+  <button class="nav-btn" id="nextBtn">→</button>
+</div>
+
+<!-- CANVAS -->
+<div id="canvas-area">
+  <canvas id="template-canvas"></canvas>
+  <canvas id="draw-canvas"></canvas>
+
+  <!-- hint thumbnail -->
+  <div id="hint-thumb">
+    <canvas id="hint-small-canvas" width="68" height="68"></canvas>
+    <div id="hint-label">hint</div>
+  </div>
+
+  <!-- hint overlay -->
+  <div id="hint-overlay">
+    <div id="hint-big">
+      <canvas id="hint-big-canvas" width="500" height="500"></canvas>
+    </div>
+    <button id="hint-close">×</button>
+  </div>
+
+  <div id="trace-hint">Trace the dots!</div>
+</div>
+
+<!-- COLOR POPUP -->
+<div id="popup-close-area"></div>
+<div id="color-popup">
+  <div id="color-grid"></div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div id="bottombar">
+  <div id="color-trigger"></div>
+
+  <button class="brush-btn active" data-size="8"><svg width="14" height="14"><circle cx="7" cy="7" r="4" fill="#555"/></svg></button>
+  <button class="brush-btn" data-size="18"><svg width="20" height="20"><circle cx="10" cy="10" r="7" fill="#555"/></svg></button>
+  <button class="brush-btn" data-size="30"><svg width="26" height="26"><circle cx="13" cy="13" r="11" fill="#555"/></svg></button>
+
+  <button class="action-btn" id="undoBtn">Undo</button>
+  <button class="action-btn danger" id="clearBtn">Clear</button>
+</div>
+
+<!-- MODAL -->
+<div id="overlay">
+  <div id="modal">
+    <div id="modal-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span id="modal-title">Choose a template</span>
+        <button id="modal-close" style="background:none;border:none;font-size:22px;cursor:pointer;color:#aaa;padding:0 4px;">×</button>
+      </div>
+      <div id="topic-tabs"></div>
+    </div>
+    <div id="modal-grid-wrap"><div id="modal-grid"></div></div>
+  </div>
+</div>
+
+<script>
+const COLORS = [
+  '#e53935','#e91e63','#9c27b0','#673ab7',
+  '#3f51b5','#1e88e5','#039be5','#00acc1',
+  '#00897b','#43a047','#7cb342','#c0ca33',
+  '#fdd835','#fb8c00','#f4511e','#795548',
+  '#546e7a','#333333','#ffffff','#f8bbd0',
+  '#b3e5fc','#c8e6c9','#fff9c4','#ffe0b2',
+];
+
+const SKELETONS = {
+  'A':[[[50,5],[20,95]],[[50,5],[80,95]],[[32,60],[68,60]]],
+  'B':[[[25,5],[25,95]],[[25,5],[55,5],[68,15],[68,28],[55,50],[25,50]],[[25,50],[58,50],[72,62],[72,78],[58,95],[25,95]]],
+  'C':[[[75,18],[62,8],[48,5],[34,8],[22,20],[18,35],[18,65],[22,80],[34,92],[48,95],[62,92],[75,82]]],
+  'D':[[[25,5],[25,95]],[[25,5],[52,5],[68,18],[75,35],[75,65],[68,82],[52,95],[25,95]]],
+  'E':[[[25,5],[25,95]],[[25,5],[75,5]],[[25,50],[62,50]],[[25,95],[75,95]]],
+  'F':[[[25,5],[25,95]],[[25,5],[75,5]],[[25,50],[62,50]]],
+  'G':[[[75,18],[62,8],[48,5],[34,8],[22,20],[18,35],[18,65],[22,80],[34,92],[48,95],[62,92],[75,82],[75,60],[55,60]]],
+  'H':[[[25,5],[25,95]],[[75,5],[75,95]],[[25,50],[75,50]]],
+  'I':[[[40,5],[60,5]],[[50,5],[50,95]],[[40,95],[60,95]]],
+  'J':[[[35,5],[65,5]],[[55,5],[55,75],[48,88],[38,92],[28,88],[22,78]]],
+  'K':[[[25,5],[25,95]],[[75,5],[25,55]],[[40,42],[75,95]]],
+  'L':[[[25,5],[25,95]],[[25,95],[72,95]]],
+  'M':[[[20,95],[20,5],[50,50],[80,5],[80,95]]],
+  'N':[[[22,95],[22,5],[78,95],[78,5]]],
+  'O':[[[50,5],[35,8],[22,20],[18,35],[18,65],[22,80],[35,92],[50,95],[65,92],[78,80],[82,65],[82,35],[78,20],[65,8],[50,5]]],
+  'P':[[[25,5],[25,95]],[[25,5],[55,5],[70,15],[70,35],[55,50],[25,50]]],
+  'Q':[[[50,5],[35,8],[22,20],[18,35],[18,65],[22,80],[35,92],[50,95],[65,92],[78,80],[82,65],[82,35],[78,20],[65,8],[50,5]],[[58,72],[80,95]]],
+  'R':[[[25,5],[25,95]],[[25,5],[55,5],[70,15],[70,35],[55,50],[25,50]],[[45,50],[78,95]]],
+  'S':[[[75,15],[62,5],[45,5],[30,15],[30,30],[45,45],[60,55],[72,65],[72,80],[60,92],[42,95],[25,85]]],
+  'T':[[[20,5],[80,5]],[[50,5],[50,95]]],
+  'U':[[[22,5],[22,70],[28,85],[40,93],[50,95],[60,93],[72,85],[78,70],[78,5]]],
+  'V':[[[20,5],[50,95],[80,5]]],
+  'W':[[[15,5],[30,95],[50,55],[70,95],[85,5]]],
+  'X':[[[22,5],[78,95]],[[78,5],[22,95]]],
+  'Y':[[[22,5],[50,52],[78,5]],[[50,52],[50,95]]],
+  'Z':[[[22,5],[78,5],[22,95],[78,95]]],
+  '0':[[[50,5],[35,8],[22,20],[18,35],[18,65],[22,80],[35,92],[50,95],[65,92],[78,80],[82,65],[82,35],[78,20],[65,8],[50,5]],[[30,25],[70,75]]],
+  '1':[[[35,20],[50,5],[50,95]],[[35,95],[65,95]]],
+  '2':[[[22,22],[28,12],[38,5],[55,5],[68,12],[72,25],[72,38],[65,52],[22,85],[22,95],[78,95]]],
+  '3':[[[22,8],[65,8],[42,45],[58,45],[70,55],[72,70],[65,85],[52,95],[35,95],[22,85]]],
+  '4':[[[62,95],[62,5],[18,65],[82,65]]],
+  '5':[[[75,5],[25,5],[22,45],[35,38],[52,35],[68,42],[78,58],[75,75],[62,90],[45,95],[28,90],[22,78]]],
+  '6':[[[72,18],[58,8],[45,5],[30,12],[20,28],[18,50],[18,68],[22,82],[35,93],[50,95],[65,92],[75,80],[78,65],[72,52],[58,45],[35,45],[22,52],[18,68]]],
+  '7':[[[20,5],[80,5],[38,95]]],
+  '8':[[[50,50],[35,42],[25,28],[28,14],[40,5],[60,5],[72,14],[75,28],[65,42],[50,50],[32,60],[22,75],[25,88],[38,95],[62,95],[75,88],[78,75],[68,60],[50,50]]],
+  '9':[[[28,82],[42,92],[58,95],[72,88],[80,72],[82,52],[78,35],[65,22],[50,18],[35,22],[22,35],[20,50],[25,65],[38,75],[55,78],[72,72],[80,52]]],
+};
+
+const ANIMAL_PATHS = {
+  'Cat': [[[241.1,15.0],[236.6,18.6],[235.2,25.3],[227.8,24.3],[229.9,34.0],[216.6,55.1],[202.7,48.8],[198.4,40.9],[177.8,37.5],[167.2,38.6],[152.4,43.0],[156.6,47.3],[146.1,54.2],[149.5,59.4],[141.8,48.8],[125.4,28.6],[127.3,24.9],[121.6,21.1],[119.4,37.8],[119.2,47.2],[119.6,56.4],[120.9,67.4],[123.1,79.1],[124.5,90.0],[126.4,103.2],[128.8,115.6],[131.0,126.6],[134.2,140.0],[137.1,151.8],[140.0,163.2],[143.4,175.7],[146.9,187.1],[149.8,198.7],[152.8,210.0],[155.0,222.1],[155.3,234.1],[153.7,244.8],[151.4,254.9],[150.4,265.1],[151.2,276.0],[153.4,286.9],[156.5,297.0],[159.9,307.4],[163.4,316.9],[167.0,327.7],[170.3,337.1],[172.8,346.5],[174.5,353.5],[175.2,360.0],[175.1,365.2],[173.6,369.4],[171.5,372.8],[168.7,374.5],[163.8,374.4],[158.7,372.2],[155.0,368.0],[154.1,362.0],[154.1,354.5],[155.0,346.4],[154.9,337.5],[153.7,329.8],[151.9,320.3],[147.4,309.8],[143.1,302.5],[139.1,295.5],[133.9,287.0],[128.0,278.5],[122.1,270.0],[116.5,261.4],[110.5,252.8],[104.4,244.7],[98.2,236.2],[92.5,227.8],[87.5,220.0],[82.6,212.0],[77.9,203.7],[73.5,196.0],[69.5,188.2],[66.0,181.2],[62.8,173.8],[60.1,166.4],[57.7,158.8],[56.0,151.9],[55.3,144.9],[55.1,137.8],[55.8,131.2],[57.5,124.6],[59.5,117.8],[63.0,111.2],[67.3,105.4],[72.8,100.2],[79.0,95.9],[86.1,92.6],[93.9,90.2],[101.8,88.8],[110.2,88.1],[118.7,88.2]],[[119.4,37.8],[119.6,25.4],[120.1,17.9],[121.8,12.1],[123.8,8.2],[126.7,6.1],[130.5,5.3],[135.3,6.0],[139.9,8.6],[143.5,13.4],[145.5,19.2],[146.1,26.6],[145.6,34.4],[144.0,43.0]],[[118.7,88.2],[127.5,88.7],[136.5,90.1],[145.2,92.5],[153.6,96.0],[160.6,100.9],[167.4,106.6],[173.4,113.1],[178.6,120.3],[182.8,128.3],[185.6,136.7],[187.3,145.9],[188.0,155.4],[187.6,164.6],[186.0,173.2],[183.2,181.3],[179.5,189.1],[175.3,196.2],[170.6,203.0],[165.9,209.8],[160.9,216.1],[155.2,222.1]],[[303.7,165.4],[299.5,163.6],[294.5,162.6],[289.1,162.9],[284.0,163.5],[278.5,164.5],[272.9,166.7],[267.9,169.5],[263.1,172.8],[258.1,176.4],[253.6,180.8],[249.3,185.4],[245.6,190.7],[242.0,196.3],[239.2,202.3],[237.2,208.5],[235.6,215.0],[234.8,222.0],[234.7,228.5],[235.1,235.1],[236.0,241.1],[237.8,247.0],[240.4,252.8],[244.4,258.5],[248.9,263.3],[253.7,268.0],[258.8,272.6],[264.0,277.1],[269.2,281.6],[274.0,286.0],[277.9,290.6],[281.5,295.7],[284.2,300.9],[285.9,306.2],[286.5,311.6],[286.3,317.3],[285.2,323.2],[283.5,328.7],[281.2,333.6],[278.4,338.1],[274.8,342.2],[270.8,345.7],[266.1,348.8],[261.1,351.2],[255.7,353.2],[249.8,354.3],[244.2,354.5],[238.3,353.8],[232.2,351.8],[226.9,349.2],[222.3,346.0],[218.5,341.8],[215.8,337.0],[214.5,331.6],[214.2,325.7],[214.6,319.7],[215.2,313.5],[215.8,307.4]],[[215.8,307.4],[218.2,300.4],[220.7,293.1],[222.6,285.7],[224.4,277.7],[226.0,270.0],[227.7,261.4],[229.1,252.6],[229.3,244.0],[228.3,235.5],[226.1,227.0],[223.7,220.0],[220.6,213.3],[216.8,207.3],[213.1,201.0],[209.0,194.5],[204.4,188.2],[199.9,181.6],[196.0,175.3],[192.6,168.5],[189.6,161.5],[187.0,154.3],[185.0,147.1],[183.3,139.6],[181.8,131.8],[180.7,123.9],[180.0,115.9],[180.2,108.1],[181.1,100.4],[182.9,93.6],[185.3,87.2],[188.5,81.2],[192.3,75.9],[196.9,71.2],[202.1,67.5],[207.6,64.3],[213.3,61.9],[219.7,60.5],[226.3,60.2],[233.0,60.8],[239.6,62.2],[245.7,64.9],[251.1,68.2],[256.3,72.1],[260.6,76.8],[264.1,82.0],[266.8,87.6],[268.4,93.6],[269.2,99.8],[269.0,106.1],[268.1,112.5],[266.8,118.7],[264.9,124.5],[262.6,130.2],[259.8,135.8],[257.0,141.1],[254.4,146.1],[252.0,151.2],[250.1,156.5],[249.0,161.8],[248.4,167.4],[248.3,172.8],[249.2,178.3],[251.5,183.6],[254.2,188.2],[257.3,192.7],[260.7,196.8],[264.4,200.8],[268.2,204.5],[272.4,208.3],[276.7,211.6],[281.0,215.0],[285.4,218.4],[289.9,221.5],[294.1,224.8],[298.1,228.2],[301.4,231.7],[304.0,235.6],[305.8,240.2],[306.7,245.1],[306.8,250.4],[306.0,255.8],[304.4,260.9],[302.0,265.7],[298.9,270.0],[295.3,274.2],[291.3,277.8],[286.9,281.1],[282.3,284.0],[277.4,286.5],[272.4,288.6],[267.2,290.3],[261.8,291.6],[256.5,292.7],[251.1,293.5],[245.5,294.1],[240.0,294.7],[234.6,295.1],[229.2,295.3],[224.0,295.4],[218.7,295.5],[213.5,295.7],[208.7,295.7],[204.0,295.5],[199.6,295.1],[195.1,294.5],[190.8,293.4],[186.6,292.2],[182.9,290.4],[179.5,288.2],[176.2,285.5],[173.5,282.5],[171.4,278.9],[170.2,275.0],[170.0,270.9],[170.7,266.7],[172.0,262.3],[173.7,258.0],[175.8,254.1],[178.3,250.2],[180.9,246.2],[183.1,242.2],[184.9,237.9],[186.4,233.6],[187.0,229.1],[187.1,224.5],[186.7,219.8],[185.8,215.3],[184.3,211.0],[182.4,206.7],[180.1,202.4],[177.6,198.1],[175.0,193.9],[172.2,189.5],[169.2,185.2],[166.5,181.1],[163.7,176.9],[161.0,172.8],[158.3,168.7],[155.8,164.5],[153.4,160.3],[151.2,156.2],[149.1,151.8],[147.1,147.4],[145.5,143.1],[144.2,138.9],[143.4,134.6],[143.2,130.3],[143.8,126.0],[145.3,121.8],[147.2,117.9],[149.9,114.1],[153.1,110.8],[156.9,107.6],[161.3,104.8],[166.2,102.4],[171.7,100.3],[177.4,98.7],[183.4,97.3],[189.6,96.2],[196.1,95.3],[202.8,94.8],[209.6,94.4],[216.4,94.3],[223.0,94.5],[229.4,95.0],[235.5,96.0],[241.2,97.4],[246.7,99.6],[251.7,102.1],[256.2,105.4],[260.1,109.3],[263.2,113.7],[265.4,118.6],[266.8,124.0],[267.3,129.7],[266.9,135.7],[265.7,141.6],[263.7,147.2],[261.2,152.5],[258.1,157.7],[254.7,162.5],[251.0,167.4],[247.3,172.0],[243.5,176.5],[239.7,181.1],[236.3,185.7],[233.3,190.4],[230.8,195.3],[229.1,200.4],[228.3,205.6],[228.3,210.8],[229.0,216.2],[230.5,221.3],[232.9,226.2],[235.8,230.6],[239.3,234.7],[243.3,238.7],[247.6,242.5],[252.3,246.1],[257.3,249.4],[262.4,252.5],[267.5,255.3],[272.7,257.8],[277.7,260.1],[282.6,262.0],[287.1,263.9],[291.2,265.6],[295.0,267.4],[298.4,269.3],[301.5,271.5],[303.7,273.8]],[[174.5,353.5],[180.0,349.9],[185.8,347.3],[191.6,345.6],[197.8,344.8],[204.2,345.3],[210.3,347.3],[215.8,350.4],[220.2,354.3],[223.4,359.3],[225.2,365.3],[225.4,371.7],[224.0,377.9],[221.0,383.1],[216.8,387.5],[211.3,390.6],[205.2,392.0],[198.7,391.6],[192.8,389.5],[187.8,385.8],[184.0,380.8],[181.7,374.7],[181.0,368.0],[182.2,361.3],[184.8,355.5]],[[57.7,158.8],[56.2,157.3],[55.2,157.7],[55.1,159.5],[55.5,161.4],[56.9,162.2],[58.4,162.0],[59.9,160.5],[60.5,158.3],[60.1,156.4],[58.8,155.2],[57.4,155.5],[56.2,157.3]],[[167.2,38.6],[160.8,36.2],[156.3,36.8],[153.4,39.7],[152.4,43.0]],[[229.9,34.0],[235.4,35.0],[239.5,37.8],[241.4,42.2],[241.1,47.1],[238.5,52.4],[234.9,55.1]],[[62.8,173.8],[60.1,180.1],[59.2,186.4],[60.9,191.7],[64.9,194.6],[69.6,195.2],[74.8,193.5],[79.5,189.6],[82.6,184.6]]],
+  'Hedgehog': [[[252.5,53.0],[254.0,58.5],[249.1,58.1],[239.4,73.1],[235.0,76.6],[229.5,57.7],[227.6,53.6],[208.8,77.0],[202.9,78.2],[205.0,81.9],[201.6,72.5],[198.4,60.8],[193.7,58.5],[196.9,55.0],[190.1,63.6],[177.0,83.6],[174.3,79.5],[169.3,68.3],[164.9,66.7],[167.1,62.8],[156.6,89.5],[152.8,88.4],[147.2,74.9],[143.8,74.0],[145.4,82.3],[134.5,99.8],[130.9,99.2],[129.2,88.3],[125.8,88.2],[123.3,87.4],[122.4,97.6],[112.4,108.4],[108.9,107.8],[110.1,96.3],[107.4,96.7],[102.1,97.4],[97.5,108.5],[93.8,108.0],[97.5,96.7],[94.1,95.8],[89.7,96.4],[89.3,108.6],[84.5,109.7],[87.5,97.1],[84.3,97.0],[80.2,98.6],[76.0,111.1],[72.6,110.3],[74.6,99.0],[71.5,100.3],[68.8,102.8],[65.9,117.7],[63.3,117.9],[63.8,104.9],[63.2,107.5],[62.0,109.6],[57.3,124.5],[55.3,122.9],[58.0,111.1],[56.3,113.4],[55.1,116.8],[53.3,132.2],[50.4,130.3],[52.3,119.7],[51.0,122.3],[50.7,125.5],[51.6,140.5],[48.2,137.7],[48.3,128.4],[47.8,131.7],[48.4,135.8],[51.8,151.7],[48.1,149.4],[46.4,138.4],[46.4,143.1],[47.4,147.5],[51.4,161.3],[48.3,160.0],[46.2,150.4],[46.1,154.6],[47.1,158.9],[51.7,173.1],[48.6,172.6],[46.3,162.9],[46.4,167.7],[47.5,172.2],[52.3,184.8],[49.1,185.2],[47.0,175.9],[47.3,181.0],[48.7,186.3],[54.1,197.4],[50.8,198.4],[48.3,189.8],[49.0,194.8],[51.0,200.4],[57.3,210.4],[54.4,212.2],[51.3,203.1],[52.3,208.5],[54.6,214.3],[61.5,222.0],[59.1,224.5],[55.5,215.5],[56.8,220.5],[59.6,226.4],[66.8,232.9],[64.8,235.9],[60.4,227.1],[62.1,232.1],[65.2,237.5],[72.9,242.9],[71.3,246.4],[66.1,238.5],[68.0,243.0],[71.5,248.7],[79.6,253.6],[77.3,257.1],[72.6,249.6],[74.9,254.0],[78.4,259.5],[86.2,264.4],[84.7,267.5],[79.1,260.4],[81.5,264.7],[85.4,269.5],[92.9,273.4],[91.8,277.0],[86.1,270.3],[88.5,274.5],[92.2,278.6],[99.7,282.4],[99.2,285.6],[93.3,279.7],[95.7,283.5],[99.8,287.1],[107.3,290.8],[107.0,293.6],[101.0,288.4],[103.5,291.9],[107.3,295.4],[115.5,298.1],[115.2,300.4],[109.4,296.1],[111.3,299.2],[115.1,302.4],[123.5,305.1],[123.2,306.6],[117.8,303.9],[120.4,306.5],[124.0,308.7],[131.2,311.5],[130.5,311.5]],[[130.5,311.5],[133.7,314.1],[137.8,316.5],[142.1,318.8],[146.8,320.9],[151.6,322.4],[156.8,323.8],[162.5,324.6],[168.4,325.5],[174.5,326.0],[181.0,326.3],[187.6,326.1],[194.4,325.3],[200.9,324.3],[207.1,322.5],[212.9,320.5],[218.6,317.6],[224.0,314.0],[228.9,309.9],[233.7,305.3],[238.3,300.1],[242.0,294.8],[245.5,289.3],[248.4,283.3],[250.9,277.1],[253.0,270.8],[254.7,264.0],[255.6,257.0],[256.1,249.8],[256.0,242.5],[255.3,235.1],[254.0,227.6],[252.1,220.2],[249.7,213.1],[246.8,206.1],[243.3,199.3],[239.4,192.8],[235.2,186.5],[230.3,180.6],[225.1,175.0],[219.6,169.7],[213.8,164.7],[207.8,160.0],[201.5,155.7],[195.0,151.7],[188.5,148.1],[181.5,144.7],[174.6,141.8],[167.5,139.3],[160.2,137.1],[152.9,135.2],[145.7,133.8],[138.4,132.7],[131.2,131.9],[124.1,131.7],[117.4,131.8],[110.9,132.3],[104.5,133.4],[98.8,134.8],[93.3,136.8],[88.1,139.3],[83.2,142.4],[78.9,146.0],[74.8,150.1],[71.2,154.7],[68.2,159.8],[65.7,165.1],[63.8,170.7],[62.5,176.7],[61.7,183.0],[61.3,189.4],[61.5,195.9],[62.1,202.4],[63.5,208.9],[65.3,215.2],[67.8,221.5],[70.9,227.6],[74.6,233.5],[78.7,239.2],[83.5,244.4],[88.8,249.3],[94.4,253.7],[100.5,257.9],[107.0,261.7],[113.8,265.2],[120.9,268.3],[128.0,271.1],[135.2,273.6],[142.4,275.9],[149.8,277.8],[157.1,279.4],[164.4,280.7],[171.6,281.9],[178.7,282.6],[185.7,283.2],[192.4,283.5],[199.0,283.7],[205.2,283.5],[211.3,283.1],[217.0,282.3],[222.4,281.4],[227.4,280.2],[232.0,278.7],[236.1,276.8]],[[236.1,276.8],[239.5,278.4],[242.5,280.0],[244.3,282.4],[244.1,285.3],[242.1,288.2],[239.2,290.9],[236.4,293.4],[234.0,296.5],[232.5,300.0],[231.7,304.0],[231.8,308.2],[232.9,312.3],[234.5,316.0],[236.7,319.9],[239.5,323.0],[242.7,325.9],[246.3,327.9],[250.3,329.2],[254.6,329.3],[258.7,328.3],[262.1,326.1],[265.0,323.3],[267.1,319.7],[268.0,315.5],[267.5,311.2],[265.9,307.2],[263.6,303.7],[261.2,300.1],[258.8,296.2],[257.2,292.1],[256.4,287.5],[256.3,282.7],[257.2,278.1],[259.6,274.0],[263.1,270.9],[267.3,268.9],[272.1,268.5],[276.9,269.0],[281.5,270.6],[285.8,273.1],[289.7,276.4],[293.0,280.4],[295.6,284.9],[297.1,289.9],[297.5,295.1],[296.5,300.3],[294.0,305.4],[290.6,309.9],[286.3,313.7],[281.4,316.7],[276.2,318.4],[271.0,318.4],[266.0,316.9],[261.5,314.2],[257.7,310.5],[254.6,306.1]],[[130.5,311.5],[127.3,309.3],[124.0,308.7]],[[130.5,311.5],[135.2,310.0],[138.1,307.4],[139.5,303.4],[139.6,299.0],[138.1,294.4],[135.8,290.3],[133.2,286.5],[131.5,282.3],[130.8,277.8],[131.1,273.1],[132.4,268.5],[134.5,264.3],[137.8,261.0],[142.1,258.7],[147.0,257.8],[152.3,258.2],[157.2,260.1],[161.4,263.2],[164.5,267.4],[165.9,272.2],[165.7,277.3],[163.7,282.2]],[[254.6,306.1],[251.8,302.3],[249.3,298.3],[247.7,294.0],[247.1,289.5],[247.2,284.8],[248.2,280.5],[250.2,276.8],[252.8,274.0],[256.2,272.1],[259.8,271.5],[263.7,272.1],[267.3,274.1],[270.3,277.2],[272.4,281.3],[273.6,285.8],[273.7,290.5],[272.5,295.2],[270.4,299.4],[267.5,303.3],[264.1,306.5],[260.3,308.7],[256.2,309.9],[252.0,309.9],[248.0,308.8]]],
+  'Fish': [[[280,200],[260,170],[220,155],[180,160],[150,163],[125,175],[110,200],[125,225],[150,237],[180,240],[220,245],[260,230],[280,200]],[[280,200],[320,175],[310,200],[320,225],[280,200]]],
+  'Bird': [[[200,180],[185,165],[165,160],[150,170],[135,180],[130,200],[140,215],[125,212],[115,220],[120,235],[125,250],[145,250],[160,242],[170,258],[190,265],[210,260],[230,255],[245,240],[245,220],[265,215],[275,200],[268,185],[260,170],[242,168],[230,178],[220,168],[208,168],[200,180]]],
+};
+
+const FRUIT_PATHS = {
+  'Apple': [[[200,308],[175,302],[152,288],[135,268],[122,244],[115,218],[116,190],[124,164],[118,151],[120,134],[130,126],[142,124],[150,130],[158,134],[168,129],[184,126],[200,126],[216,126],[232,129],[242,134],[250,130],[258,124],[270,126],[280,134],[282,151],[272,164],[280,190],[285,218],[278,244],[265,268],[248,288],[225,302],[200,308]],[[200,126],[202,112],[210,98],[220,88]]],
+  'Banana': [[[148,286],[136,270],[128,250],[126,228],[130,206],[138,185],[150,166],[164,150],[180,136],[196,126],[214,118],[232,114],[248,115],[262,122],[272,133],[276,149],[266,142],[252,139],[236,143],[220,152],[206,167],[196,185],[190,205],[188,228],[192,254],[200,272],[196,280],[180,285],[165,283],[148,286]]],
+  'Orange': [[[200,298],[178,295],[158,285],[142,268],[130,248],[122,225],[120,200],[122,175],[130,152],[142,135],[158,122],[178,115],[200,112],[222,115],[242,122],[258,135],[270,152],[278,175],[280,200],[278,225],[270,248],[258,268],[242,285],[222,295],[200,298]],[[200,112],[200,100],[203,90],[200,82]],[[176,114],[168,100],[160,92],[152,92]]],
+  'Grapes': [[[165,163],[156,150],[156,134],[166,124],[176,114],[193,114],[200,124],[207,114],[224,114],[234,124],[244,134],[244,150],[234,163]],[[148,198],[139,185],[139,169],[149,159],[159,149],[176,149],[183,159],[217,159],[225,149],[242,149],[252,159],[262,169],[262,185],[252,198]],[[165,232],[156,219],[156,203],[166,193],[176,183],[193,183],[200,193],[207,183],[224,183],[234,193],[244,203],[244,219],[234,232]],[[183,265],[174,252],[174,236],[184,226],[194,216],[206,216],[216,226],[226,236],[226,252],[217,265]],[[200,124],[200,105],[204,90],[200,78]]],
+};
+const CAR_PATHS = {
+  'Car':   [[[90,235],[90,210],[128,210],[154,175],[246,175],[272,210],[310,210],[310,235],[90,235]],[[154,186],[246,186]],[[113,235],[101,235]],[[299,235],[287,235]]],
+  'Bus':   [[[88,258],[88,163],[99,152],[301,152],[312,163],[312,258],[88,258]],[[88,198],[312,198]],[[108,170],[180,170],[180,196],[108,196],[108,170]],[[208,170],[280,170],[280,196],[208,196],[208,170]]],
+  'Truck': [[[82,250],[82,185],[195,185],[195,158],[308,158],[308,250],[82,250]],[[195,185],[195,250]],[[100,205],[178,205],[178,246],[100,246],[100,205]],[[212,175],[290,175],[290,205],[212,205],[212,175]]],
+};
+
+const TOPICS = {
+  letters:{ label:'ABC', type:'skeleton', items:'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(c=>({name:c,key:c})) },
+  numbers:{ label:'123', type:'skeleton', items:'0123456789'.split('').map(c=>({name:c,key:c})) },
+  animals:{ label:'Animals', type:'polypath', items:Object.keys(ANIMAL_PATHS).map(k=>({name:k,key:k})) },
+  fruits: { label:'Fruits',  type:'polypath', items:Object.keys(FRUIT_PATHS).map(k=>({name:k,key:k})) },
+  cars:   { label:'Cars',    type:'polypath', items:Object.keys(CAR_PATHS).map(k=>({name:k,key:k})) },
+};
+
+const DOT_R=5, DOT_COLOR='#9199b0', DOT_SPACING=18;
+
+function samplePolyline(pts,spacing){
+  const dots=[];let carry=0;
+  for(let i=0;i<pts.length-1;i++){
+    const ax=pts[i][0],ay=pts[i][1],bx=pts[i+1][0],by=pts[i+1][1];
+    const dx=bx-ax,dy=by-ay,seg=Math.hypot(dx,dy);
+    if(seg<0.001)continue;
+    let t=(carry>0)?(spacing-carry)/seg:0;
+    if(carry===0)dots.push([ax,ay]);
+    while(t<=1){dots.push([ax+dx*t,ay+dy*t]);t+=spacing/seg;}
+    carry=seg-(t-spacing/seg)*seg;
+    if(carry>=seg)carry=0;
+  }
+  return dots;
+}
+
+function drawDots(ctx,dots,r,color){
+  ctx.fillStyle=color;
+  dots.forEach(([x,y])=>{ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();});
+}
+
+function drawLines(ctx,strokes,ox,oy,sc,color,lw){
+  ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.lineCap='round';ctx.lineJoin='round';
+  strokes.forEach(stroke=>{
+    if(stroke.length<2)return;
+    ctx.beginPath();
+    stroke.forEach(([x,y],i)=>{
+      const px=ox+x*sc,py=oy+y*sc;
+      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  });
+}
+
+function getStrokesForItem(topic,item){
+  if(topic.type==='skeleton') return SKELETONS[item.key];
+  const map=topic.label==='Animals'?ANIMAL_PATHS:topic.label==='Fruits'?FRUIT_PATHS:CAR_PATHS;
+  return map[item.key];
+}
+
+function computeTransform(strokes,w,h,padFrac){
+  if(!strokes||!strokes.length)return{ox:0,oy:0,sc:1};
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  strokes.forEach(s=>s.forEach(([x,y])=>{
+    if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;
+  }));
+  const pw=maxX-minX,ph=maxY-minY;
+  const pad=padFrac||0.82;
+  const sc=Math.min(w/pw,h/ph)*pad;
+  return{ox:(w-pw*sc)/2-minX*sc,oy:(h-ph*sc)/2-minY*sc,sc,minX,minY,maxX,maxY};
+}
+
+function renderSkeletonDots(ctx,key,w,h,dotR,spacing){
+  const strokes=SKELETONS[key];if(!strokes)return;
+  const scale=Math.min(w,h)*0.0082;
+  const ox=w*0.5-50*scale,oy=h*0.5-50*scale;
+  strokes.forEach(stroke=>{
+    const mapped=stroke.map(([x,y])=>[ox+x*scale,oy+y*scale]);
+    drawDots(ctx,samplePolyline(mapped,spacing),dotR,DOT_COLOR);
+  });
+}
+
+function renderPolypathDots(ctx,strokes,w,h,dotR,spacing){
+  if(!strokes)return;
+  const{ox,oy,sc}=computeTransform(strokes,w,h);
+  strokes.forEach(stroke=>{
+    const mapped=stroke.map(([x,y])=>[ox+x*sc,oy+y*sc]);
+    drawDots(ctx,samplePolyline(mapped,spacing),dotR,DOT_COLOR);
+  });
+}
+
+function renderHintLines(ctx,topic,item,w,h){
+  const strokes=getStrokesForItem(topic,item);
+  if(!strokes)return;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+  let ox,oy,sc;
+  if(topic.type==='skeleton'){
+    sc=Math.min(w,h)*0.0082;ox=w*0.5-50*sc;oy=h*0.5-50*sc;
+  } else {
+    const t=computeTransform(strokes,w,h,0.8);ox=t.ox;oy=t.oy;sc=t.sc;
+  }
+  const lw=Math.max(2,Math.min(w,h)*0.025);
+  drawLines(ctx,strokes,ox,oy,sc,'#7c83e8',lw);
+}
+
+// ── DOM refs
+const tCanvas=document.getElementById('template-canvas');
+const dCanvas=document.getElementById('draw-canvas');
+const tCtx=tCanvas.getContext('2d');
+const dCtx=dCanvas.getContext('2d');
+const canvasArea=document.getElementById('canvas-area');
+const traceHint=document.getElementById('trace-hint');
+const tplLabel=document.getElementById('tpl-label');
+const pickerLabel=document.getElementById('picker-label');
+const prevBtn=document.getElementById('prevBtn');
+const nextBtn=document.getElementById('nextBtn');
+const overlay=document.getElementById('overlay');
+const modalGrid=document.getElementById('modal-grid');
+const topicTabsEl=document.getElementById('topic-tabs');
+const colorTrigger=document.getElementById('color-trigger');
+const colorPopup=document.getElementById('color-popup');
+const colorGrid=document.getElementById('color-grid');
+const popupCloseArea=document.getElementById('popup-close-area');
+const hintThumb=document.getElementById('hint-thumb');
+const hintSmall=document.getElementById('hint-small-canvas');
+const hintOverlay=document.getElementById('hint-overlay');
+const hintBig=document.getElementById('hint-big-canvas');
+
+let currentTopic='letters',currentIndex=0;
+let color=COLORS[0],brushSize=8;
+let isDrawing=false,lastX=0,lastY=0;
+let history=[];
+let hintTimer;
+
+// build color popup grid
+function buildColorGrid(){
+  colorGrid.innerHTML='';
+  COLORS.forEach(c=>{
+    const btn=document.createElement('div');
+    btn.className='cpick'+(c===color?' active':'');
+    btn.style.background=c;
+    if(c==='#ffffff')btn.style.border='3px solid #ccc';
+    btn.addEventListener('click',()=>{
+      color=c;
+      colorTrigger.style.background=c;
+      document.querySelectorAll('.cpick').forEach(b=>b.classList.toggle('active',b.style.background===c||b.style.backgroundColor===c));
+      closeColorPopup();
+    });
+    colorGrid.appendChild(btn);
+  });
+}
+
+function openColorPopup(){
+  buildColorGrid();
+  colorPopup.classList.add('open');
+  popupCloseArea.classList.add('open');
+}
+function closeColorPopup(){
+  colorPopup.classList.remove('open');
+  popupCloseArea.classList.remove('open');
+}
+
+colorTrigger.addEventListener('click',()=>{
+  colorPopup.classList.contains('open')?closeColorPopup():openColorPopup();
+});
+popupCloseArea.addEventListener('click',closeColorPopup);
+
+// init color trigger
+colorTrigger.style.background=color;
+
+// hint thumb
+function updateHint(){
+  const topic=TOPICS[currentTopic];
+  const item=topic.items[currentIndex];
+  renderHintLines(hintSmall.getContext('2d'),topic,item,68,68);
+  renderHintLines(hintBig.getContext('2d'),topic,item,500,500);
+}
+
+hintThumb.addEventListener('click',()=>hintOverlay.classList.add('open'));
+document.getElementById('hint-close').addEventListener('click',()=>hintOverlay.classList.remove('open'));
+hintOverlay.addEventListener('click',e=>{if(e.target===hintOverlay)hintOverlay.classList.remove('open');});
+
+// template rendering
+function doRender(){
+  const w=tCanvas.width,h=tCanvas.height;
+  tCtx.clearRect(0,0,w,h);
+  tCtx.fillStyle='#f8f9ff';tCtx.fillRect(0,0,w,h);
+  const topic=TOPICS[currentTopic];
+  const item=topic.items[currentIndex];
+  if(topic.type==='skeleton') renderSkeletonDots(tCtx,item.key,w,h,DOT_R,DOT_SPACING);
+  else renderPolypathDots(tCtx,getStrokesForItem(topic,item),w,h,DOT_R,DOT_SPACING);
+  prevBtn.disabled=currentIndex===0;
+  nextBtn.disabled=currentIndex===topic.items.length-1;
+  tplLabel.textContent=item.name;
+  pickerLabel.textContent=topic.label+' · '+item.name;
+  updateHint();
+}
+
+function resize(){
+  const w=canvasArea.offsetWidth,h=canvasArea.offsetHeight;
+  tCanvas.width=dCanvas.width=w;tCanvas.height=dCanvas.height=h;
+  doRender();
+  if(history.length)dCtx.putImageData(history[history.length-1],0,0);
+}
+
+function showTraceHint(){
+  traceHint.style.opacity='1';
+  clearTimeout(hintTimer);
+  hintTimer=setTimeout(()=>traceHint.style.opacity='0',2500);
+}
+
+function changeTemplate(topic,index){
+  currentTopic=topic;currentIndex=index;
+  history=[];dCtx.clearRect(0,0,dCanvas.width,dCanvas.height);
+  doRender();showTraceHint();
+}
+
+// modal
+function buildModalGrid(topic){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.topic===topic));
+  modalGrid.innerHTML='';
+  const t=TOPICS[topic];
+  t.items.forEach((item,i)=>{
+    const cell=document.createElement('div');
+    cell.className='grid-item'+(topic===currentTopic&&i===currentIndex?' active':'');
+    const cvs=document.createElement('canvas');
+    cvs.width=cvs.height=60;
+    const ctx=cvs.getContext('2d');
+    ctx.fillStyle='#f8f9ff';ctx.fillRect(0,0,60,60);
+    if(t.type==='skeleton') renderSkeletonDots(ctx,item.key,60,60,2,7);
+    else renderPolypathDots(ctx,getStrokesForItem(t,item),60,60,2,7);
+    cell.appendChild(cvs);
+    const lbl=document.createElement('div');lbl.className='grid-item-label';lbl.textContent=item.name;
+    cell.appendChild(lbl);
+    cell.addEventListener('click',()=>{changeTemplate(topic,i);closeModal();});
+    modalGrid.appendChild(cell);
+  });
+}
+
+function openModal(){
+  topicTabsEl.innerHTML='';
+  Object.entries(TOPICS).forEach(([key,val])=>{
+    const btn=document.createElement('button');
+    btn.className='tab-btn'+(key===currentTopic?' active':'');
+    btn.textContent=val.label;btn.dataset.topic=key;
+    btn.addEventListener('click',()=>buildModalGrid(key));
+    topicTabsEl.appendChild(btn);
+  });
+  buildModalGrid(currentTopic);
+  overlay.classList.add('open');
+  const active=modalGrid.querySelector('.grid-item.active');
+  if(active)active.scrollIntoView({block:'center',behavior:'instant'});
+}
+function closeModal(){overlay.classList.remove('open');}
+
+document.getElementById('picker-btn').addEventListener('click',openModal);
+document.getElementById('modal-close').addEventListener('click',closeModal);
+overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+
+prevBtn.addEventListener('click',()=>{if(currentIndex>0)changeTemplate(currentTopic,currentIndex-1);});
+nextBtn.addEventListener('click',()=>{if(currentIndex<TOPICS[currentTopic].items.length-1)changeTemplate(currentTopic,currentIndex+1);});
+
+// drawing
+function getPos(e){
+  const rect=dCanvas.getBoundingClientRect();
+  const src=e.touches?e.touches[0]:e;
+  return{x:src.clientX-rect.left,y:src.clientY-rect.top};
+}
+function saveHistory(){
+  history.push(dCtx.getImageData(0,0,dCanvas.width,dCanvas.height));
+  if(history.length>30)history.shift();
+}
+function startDraw(e){
+  e.preventDefault();saveHistory();isDrawing=true;
+  const p=getPos(e);lastX=p.x;lastY=p.y;
+  dCtx.beginPath();dCtx.arc(lastX,lastY,brushSize/2,0,Math.PI*2);
+  dCtx.fillStyle=color;dCtx.fill();
+  traceHint.style.opacity='0';
+}
+function draw(e){
+  if(!isDrawing)return;e.preventDefault();
+  const p=getPos(e);
+  dCtx.beginPath();dCtx.moveTo(lastX,lastY);dCtx.lineTo(p.x,p.y);
+  dCtx.strokeStyle=color;dCtx.lineWidth=brushSize;
+  dCtx.lineCap='round';dCtx.lineJoin='round';dCtx.stroke();
+  lastX=p.x;lastY=p.y;
+}
+function endDraw(e){if(isDrawing){e.preventDefault();isDrawing=false;}}
+
+dCanvas.addEventListener('mousedown',startDraw);
+dCanvas.addEventListener('mousemove',draw);
+dCanvas.addEventListener('mouseup',endDraw);
+dCanvas.addEventListener('mouseleave',endDraw);
+dCanvas.addEventListener('touchstart',startDraw,{passive:false});
+dCanvas.addEventListener('touchmove',draw,{passive:false});
+dCanvas.addEventListener('touchend',endDraw,{passive:false});
+
+document.querySelectorAll('.brush-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.brush-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');brushSize=parseInt(btn.dataset.size);
+  });
+});
+document.getElementById('undoBtn').addEventListener('click',()=>{
+  history.pop();dCtx.clearRect(0,0,dCanvas.width,dCanvas.height);
+  if(history.length)dCtx.putImageData(history[history.length-1],0,0);
+});
+document.getElementById('clearBtn').addEventListener('click',()=>{
+  saveHistory();dCtx.clearRect(0,0,dCanvas.width,dCanvas.height);showTraceHint();
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+window.addEventListener('resize',resize);
+resize();showTraceHint();
+</script>
+</body>
+</html>
