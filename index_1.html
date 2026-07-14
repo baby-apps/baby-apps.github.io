@@ -1,143 +1,513 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Dotted Line Drawing</title>
-    <link rel="stylesheet" href="styles.css">
-  </head>
-  <body>
-    <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Show tools" aria-expanded="false">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-    </button>
-    <div id="sidebarScrim" class="sidebar-scrim" aria-hidden="true"></div>
+<title>SVG → Template JSON</title>
+<style>
+  :root {
+    --bg:       #0d0f16;
+    --surface:  #151720;
+    --border:   #252838;
+    --accent:   #7c6ff7;
+    --accent-dim: rgba(124,111,247,0.12);
+    --text:     #d4d8f0;
+    --muted:    #5c6080;
+    --good:     #4ade80;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    --sans: system-ui, -apple-system, sans-serif;
+    --dot-color: #7c6ff7;
+    --canvas-bg: #1e2130;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:      #f2f3f8;
+      --surface: #ffffff;
+      --border:  #dde0ef;
+      --text:    #1a1c2e;
+      --muted:   #8890b0;
+      --accent-dim: rgba(124,111,247,0.08);
+      --dot-color: #7c6ff7;
+      --canvas-bg: #f0f1f8;
+    }
+  }
+  :root[data-theme="dark"]  { --bg:#0d0f16;--surface:#151720;--border:#252838;--text:#d4d8f0;--muted:#5c6080;--accent-dim:rgba(124,111,247,0.12);--dot-color:#7c6ff7;--canvas-bg:#1e2130; }
+  :root[data-theme="light"] { --bg:#f2f3f8;--surface:#ffffff;--border:#dde0ef;--text:#1a1c2e;--muted:#8890b0;--accent-dim:rgba(124,111,247,0.08);--dot-color:#7c6ff7;--canvas-bg:#f0f1f8; }
 
-    <main class="app-shell">
-      <aside class="side-panel" aria-label="Drawing controls">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">DL</div>
-          <div>
-            <h1>Dotted Draw</h1>
-            <p>Trace, color, and practice.</p>
-          </div>
-        </div>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        <button id="settingsOpen" class="settings-entry" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2a2 2 0 0 1-4 0V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 0 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8a2 2 0 0 1 0-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7A2 2 0 0 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 .9-1.6V2.8a2 2 0 0 1 4 0V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 0 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6.9h.2a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
-          <span data-i18n="settings">Settings</span>
-        </button>
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 60px;
+    gap: 0;
+  }
 
-        <section class="control-group">
-          <div class="group-label" data-i18n="topic">Topic</div>
-          <div class="topic-tabs" id="topicTabs" role="tablist" aria-label="Template topics"></div>
-        </section>
+  header {
+    width: 100%;
+    max-width: 920px;
+    margin-bottom: 32px;
+  }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  h1 span { color: var(--muted); font-weight: 400; }
 
-        <section class="control-group">
-          <label class="group-label" for="templateSelect" data-i18n="template">Template</label>
-          <select id="templateSelect"></select>
-          <div class="template-strip" id="templateStrip" aria-label="Template previews"></div>
-        </section>
+  .grid {
+    width: 100%;
+    max-width: 920px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 
-        <section class="control-group">
-          <div class="group-label" data-i18n="color">Color</div>
-          <div class="color-grid" id="colorGrid" aria-label="Drawing colors"></div>
-        </section>
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
 
-        <section class="control-group">
-          <label class="group-label" for="brushSize" data-i18n="brush">Brush</label>
-          <div class="range-row">
-            <input id="brushSize" type="range" min="3" max="34" value="12">
-            <output id="brushOutput" for="brushSize">12</output>
-          </div>
-        </section>
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .panel-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--mono);
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 6px;
+    padding: 2px 8px;
+  }
 
-        <section class="tool-grid" aria-label="Drawing actions">
-          <button id="drawMode" class="tool-button active" type="button" title="Draw" aria-label="Draw">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 10-10a2.8 2.8 0 0 0-4-4l-10 10L4 20Z"/><path d="m13.5 5.5 5 5"/></svg>
-          </button>
-          <button id="eraseMode" class="tool-button" type="button" title="Erase" aria-label="Erase">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 21-4-4 10-10a3 3 0 0 1 4 0l4 4-10 10H7Z"/><path d="m13 7 4 4"/><path d="M14 21h7"/></svg>
-          </button>
-          <button id="undoButton" class="tool-button" type="button" title="Undo" aria-label="Undo">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
-          </button>
-          <button id="redoButton" class="tool-button" type="button" title="Redo" aria-label="Redo">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>
-          </button>
-          <button id="clearButton" class="tool-button" type="button" title="Clear drawing" aria-label="Clear drawing">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m9 11 .5 7"/><path d="m15 11-.5 7"/><path d="M6 6l1 15h10l1-15"/></svg>
-          </button>
-          <button id="saveButton" class="tool-button" type="button" title="Save picture" aria-label="Save picture">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-          </button>
-        </section>
-      </aside>
+  textarea {
+    flex: 1;
+    min-height: 360px;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text);
+    tab-size: 2;
+  }
+  textarea::placeholder { color: var(--muted); }
 
-      <section class="workspace" aria-label="Drawing board">
-        <div class="stage-header">
-          <div>
-            <h2 id="templateName">Letter A</h2>
-            <p id="templateHint">Follow the dotted path with your finger or pencil.</p>
-          </div>
-          <div class="status-pill" id="statusPill">Ready</div>
-        </div>
+  /* preview panel */
+  .preview-panel {
+    width: 100%;
+    max-width: 920px;
+    margin-top: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .preview-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 24px;
+    flex-wrap: wrap;
+  }
+  .preview-canvas-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  #previewCanvas {
+    display: block;
+    border-radius: 10px;
+    background: var(--canvas-bg);
+    border: 1px solid var(--border);
+  }
+  .preview-info {
+    flex: 1;
+    min-width: 180px;
+  }
+  .preview-info h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+    word-break: break-all;
+  }
+  .preview-stat {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .preview-stat b { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .preview-empty {
+    width: 100%;
+    text-align: center;
+    padding: 32px 14px;
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .preview-error {
+    font-size: 12px;
+    color: #f87171;
+    margin-top: 8px;
+    font-family: var(--mono);
+  }
 
-        <div class="drawing-card">
-          <svg id="templateSvg" class="template-svg" viewBox="0 0 900 700" role="img" aria-label="Selected dotted drawing template"></svg>
-          <canvas id="drawingCanvas" width="900" height="700" aria-label="Drawing surface"></canvas>
-          <aside id="samplePanel" class="sample-panel" aria-label="Template sample">
-            <button id="sampleToggle" class="sample-toggle" type="button" aria-label="Hide sample">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6A2 2 0 0 0 13.4 13.4"/><path d="M9.9 4.2A10.7 10.7 0 0 1 12 4c5 0 8.5 4.1 10 8a14.6 14.6 0 0 1-3.1 4.8"/><path d="M6.2 6.3A14.2 14.2 0 0 0 2 12c1.5 3.9 5 8 10 8 1.4 0 2.7-.3 3.9-.9"/></svg>
-            </button>
-            <div class="sample-label" data-i18n="sample">Sample</div>
-            <svg id="sampleSvg" viewBox="0 0 900 700" aria-hidden="true"></svg>
-          </aside>
-        </div>
-      </section>
-    </main>
+  .actions {
+    width: 100%;
+    max-width: 920px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+  }
 
-    <section id="settingsPanel" class="settings-panel" aria-hidden="true" aria-label="Settings">
-      <div class="settings-card" role="dialog" aria-modal="true">
-        <div class="settings-head">
-          <h2 data-i18n="settings">Settings</h2>
-          <button id="settingsClose" class="icon-button" type="button" aria-label="Close settings">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-          </button>
-        </div>
+  .name-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0 12px;
+  }
+  .name-wrap label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  #tplName {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    padding: 10px 0;
+  }
 
-        <div class="setting-row">
-          <label for="backgroundSelect" data-i18n="background">Background</label>
-          <select id="backgroundSelect">
-            <option value="grid">Grid</option>
-            <option value="plain">Plain</option>
-            <option value="paper">Paper</option>
-            <option value="sky">Sky</option>
-          </select>
-        </div>
+  .btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: .88; }
+  .btn-copy {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid var(--border);
+  }
+  .btn-copy:hover { opacity: .8; }
+  .btn-copy.copied {
+    background: rgba(74,222,128,.12);
+    color: var(--good);
+    border-color: transparent;
+  }
 
-        <div class="setting-row">
-          <label for="themeSelect" data-i18n="theme">Theme</label>
-          <select id="themeSelect">
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
+  .info-bar {
+    width: 100%;
+    max-width: 920px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    min-height: 18px;
+  }
+  .info-bar b { color: var(--accent); }
+</style>
 
-        <div class="setting-row">
-          <label for="languageSelect" data-i18n="language">Language</label>
-          <select id="languageSelect">
-            <option value="en">EN</option>
-            <option value="vi">VI</option>
-          </select>
-        </div>
+<header>
+  <div class="eyebrow">Dev Tool</div>
+  <h1>SVG → Template JSON <span>paste · extract · preview · copy</span></h1>
+</header>
 
-        <button class="login-button" type="button" disabled>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
-          <span data-i18n="loginSoon">Login coming later</span>
-        </button>
+<div class="grid">
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">SVG Input</span>
+      <span class="badge" id="pathCount">0 paths</span>
+    </div>
+    <textarea id="svgInput" placeholder="Paste SVG here…" spellcheck="false"></textarea>
+  </div>
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">JSON Output</span>
+      <button class="btn btn-copy" id="copyBtn" onclick="copyOutput()">Copy</button>
+    </div>
+    <textarea id="output" placeholder="Output appears here… (editable)" spellcheck="false"></textarea>
+  </div>
+</div>
+
+<div class="actions">
+  <div class="name-wrap">
+    <label for="tplName">Name</label>
+    <input id="tplName" type="text" value="MyTemplate" spellcheck="false">
+  </div>
+  <button class="btn btn-primary" onclick="convert()">Convert</button>
+</div>
+
+<div class="info-bar" id="infoBar"></div>
+
+<!-- Preview panel -->
+<div class="preview-panel" id="previewPanel">
+  <div class="panel-head">
+    <span class="panel-label">Preview</span>
+    <span class="badge" id="previewBadge">—</span>
+  </div>
+  <div class="preview-body" id="previewBody">
+    <div class="preview-empty">Convert an SVG or edit the JSON output to see the template preview.</div>
+  </div>
+</div>
+
+<script>
+const svgInput  = document.getElementById('svgInput');
+const output    = document.getElementById('output');
+const pathCount = document.getElementById('pathCount');
+const infoBar   = document.getElementById('infoBar');
+
+let _convertTimer;
+function scheduleConvert() {
+  clearTimeout(_convertTimer);
+  _convertTimer = setTimeout(convert, 120);
+}
+
+svgInput.addEventListener('input', scheduleConvert);
+document.getElementById('tplName').addEventListener('input', scheduleConvert);
+output.addEventListener('input', () => updatePreview());
+
+// ── Extract SVG paths
+
+function extractPaths(svgText) {
+  if (!svgText.trim()) return [];
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, 'image/svg+xml');
+    if (doc.querySelector('parsererror')) return [];
+    return Array.from(doc.querySelectorAll('path'))
+      .map(p => p.getAttribute('d'))
+      .filter(Boolean)
+      .filter(d => !/^M\s*0\s+0\s*[hH]\s*\d+/.test(d.trim()));
+  } catch { return []; }
+}
+
+// ── Convert
+
+function convert() {
+  const raw = svgInput.value.trim();
+  if (!raw) { setOutput(''); return; }
+
+  const paths = extractPaths(raw);
+  if (!paths.length) { setOutput(''); infoBar.textContent = 'No <path> elements found.'; return; }
+
+  const name  = document.getElementById('tplName').value.trim() || 'MyTemplate';
+  const lines = paths.map((d, i) => '    ' + JSON.stringify(d) + (i < paths.length - 1 ? ',' : ''));
+  const json  = '"' + name + '": [\n' + lines.join('\n') + '\n  ]';
+
+  setOutput(json);
+  pathCount.textContent = paths.length + (paths.length === 1 ? ' path' : ' paths');
+  infoBar.innerHTML = 'Found <b>' + paths.length + '</b> path' + (paths.length !== 1 ? 's' : '') + '. Edit the JSON or copy it into your template data.';
+  updatePreview();
+}
+
+function setOutput(text) {
+  output.value = text;
+}
+
+function copyOutput() {
+  const text = output.value.trim();
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+// ── Rendering engine (matches index.html)
+
+function samplePolyline(pts, spacing) {
+  const dots = []; let carry = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const ax=pts[i][0], ay=pts[i][1], bx=pts[i+1][0], by=pts[i+1][1];
+    const dx=bx-ax, dy=by-ay, seg=Math.hypot(dx,dy);
+    if (seg < 0.001) continue;
+    let t = carry > 0 ? (spacing - carry) / seg : 0;
+    if (carry === 0) dots.push([ax, ay]);
+    while (t <= 1) { dots.push([ax+dx*t, ay+dy*t]); t += spacing/seg; }
+    carry = seg - (t - spacing/seg) * seg;
+    if (carry >= seg) carry = 0;
+  }
+  return dots;
+}
+
+function drawDots(ctx, dots, r, color) {
+  ctx.fillStyle = color;
+  dots.forEach(([x,y]) => { ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); });
+}
+
+function computeTransform(strokes, w, h, padFrac) {
+  if (!strokes || !strokes.length) return {ox:0,oy:0,sc:1};
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  strokes.forEach(s => s.forEach(([x,y]) => {
+    if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;
+  }));
+  const pw=maxX-minX, ph=maxY-minY;
+  const sc = Math.min(w/(pw||1), h/(ph||1)) * (padFrac||0.82);
+  return {ox:(w-pw*sc)/2-minX*sc, oy:(h-ph*sc)/2-minY*sc, sc};
+}
+
+const _cache = {};
+function normalizePaths(strokes) {
+  if (!strokes || !strokes.length) return strokes;
+  if (typeof strokes[0] !== 'string') return strokes;
+  const key = strokes[0].slice(0, 40);
+  if (_cache[key]) return _cache[key];
+  const result = strokes.map(d => {
+    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d', d);
+    const len = p.getTotalLength(), pts = [];
+    const step = Math.max(1, len / 300); // ~300 pts per stroke max
+    for (let t = 0; t <= len; t += step) { const pt = p.getPointAtLength(t); pts.push([pt.x, pt.y]); }
+    return pts;
+  });
+  return (_cache[key] = result);
+}
+
+function renderDots(ctx, strokes, w, h) {
+  const normalized = normalizePaths(strokes);
+  if (!normalized) return;
+  const {ox, oy, sc} = computeTransform(normalized, w, h, 0.82);
+  const dotR    = Math.max(2, w * 0.012);
+  const spacing = Math.max(6, w * 0.038);
+  const color   = getComputedStyle(document.documentElement).getPropertyValue('--dot-color').trim() || '#7c6ff7';
+  normalized.forEach(stroke => {
+    const mapped = stroke.map(([x,y]) => [ox+x*sc, oy+y*sc]);
+    drawDots(ctx, samplePolyline(mapped, spacing), dotR, color);
+  });
+}
+
+// ── Parse JSON output and update preview
+
+function parseOutput(text) {
+  text = text.trim();
+  if (!text) return null;
+  try {
+    // Wrap in {} to make it parseable: "Name": [...]  →  {"Name": [...]}
+    const parsed = JSON.parse('{' + text + '}');
+    const keys = Object.keys(parsed);
+    if (!keys.length) return null;
+    return { name: keys[0], strokes: parsed[keys[0]] };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+function updatePreview() {
+  const body  = document.getElementById('previewBody');
+  const badge = document.getElementById('previewBadge');
+  const text  = output.value.trim();
+
+  if (!text) {
+    badge.textContent = '—';
+    body.innerHTML = '<div class="preview-empty">Convert an SVG or edit the JSON output to see the template preview.</div>';
+    return;
+  }
+
+  const result = parseOutput(text);
+
+  if (!result || result.error) {
+    badge.textContent = 'invalid JSON';
+    body.innerHTML = '<div class="preview-empty">Invalid JSON.<div class="preview-error">' + (result ? escHtml(result.error) : '') + '</div></div>';
+    return;
+  }
+
+  const {name, strokes} = result;
+  if (!Array.isArray(strokes) || !strokes.length) {
+    badge.textContent = 'no strokes';
+    body.innerHTML = '<div class="preview-empty">No stroke data found in JSON.</div>';
+    return;
+  }
+
+  // Count strokes and total points
+  const normalized = normalizePaths(strokes);
+  const strokeCount = normalized.length;
+  const ptCount = normalized.reduce((n, s) => n + s.length, 0);
+  badge.textContent = strokeCount + (strokeCount === 1 ? ' stroke' : ' strokes');
+
+  // Build preview DOM
+  const SIZE = 260;
+  body.innerHTML = `
+    <div class="preview-canvas-wrap">
+      <canvas id="previewCanvas" width="${SIZE}" height="${SIZE}"></canvas>
+    </div>
+    <div class="preview-info">
+      <h3 id="previewName">${escHtml(name)}</h3>
+      <div class="preview-stat">Strokes: <b>${strokeCount}</b></div>
+      <div class="preview-stat">Sample pts: <b>${ptCount}</b></div>
+      <div class="preview-stat" id="ptNote" style="color:var(--muted);font-size:11px;margin-top:8px;">
+        ${typeof strokes[0]==='string' ? 'SVG path strings — sampled at render time' : 'Coordinate arrays'}
       </div>
-    </section>
+    </div>`;
 
-    <script src="app.js"></script>
-  </body>
-</html>
+  const canvas = document.getElementById('previewCanvas');
+  const ctx    = canvas.getContext('2d');
+
+  // Background
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#1e2130';
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  renderDots(ctx, strokes, SIZE, SIZE);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
