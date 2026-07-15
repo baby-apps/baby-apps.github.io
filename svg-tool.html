@@ -69,9 +69,10 @@
     width: 100%;
     max-width: 920px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(220px,.8fr);
     gap: 16px;
   }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 
   .panel {
@@ -127,20 +128,33 @@
   /* preview panel */
   .preview-panel {
     width: 100%;
-    max-width: 920px;
-    margin-top: 16px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .stack-panel {
+    width: 100%;
+    max-width: 920px;
+    margin-top: 16px;
+  }
+  .stack-panel textarea {
+    min-height: 220px;
+  }
+  .panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   .preview-body {
+    flex: 1;
+    min-height: 360px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 32px;
-    padding: 24px;
-    flex-wrap: wrap;
+    padding: 16px;
   }
   .preview-canvas-wrap {
     position: relative;
@@ -148,42 +162,12 @@
   }
   #previewCanvas {
     display: block;
+    width: min(100%, 260px);
+    height: auto;
     border-radius: 10px;
     background: var(--canvas-bg);
     border: 1px solid var(--border);
   }
-  .preview-info {
-    flex: 1;
-    min-width: 180px;
-  }
-  .preview-info h3 {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 6px;
-    word-break: break-all;
-  }
-  .preview-stat {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 4px;
-  }
-  .preview-stat b { color: var(--accent); font-variant-numeric: tabular-nums; }
-  .preview-empty {
-    width: 100%;
-    text-align: center;
-    padding: 32px 14px;
-    font-size: 13px;
-    color: var(--muted);
-    font-style: italic;
-  }
-  .preview-error {
-    font-size: 12px;
-    color: #f87171;
-    margin-top: 8px;
-    font-family: var(--mono);
-  }
-
   .actions {
     width: 100%;
     max-width: 920px;
@@ -278,9 +262,15 @@
   <div class="panel">
     <div class="panel-head">
       <span class="panel-label">JSON Output</span>
-      <button class="btn btn-copy" id="copyBtn" onclick="copyOutput()">Copy</button>
+      <div class="panel-actions">
+        <button class="btn btn-copy" id="addBtn" onclick="addOutput()">Add</button>
+        <button class="btn btn-copy" id="copyBtn" onclick="copyOutput()">Copy</button>
+      </div>
     </div>
     <textarea id="output" placeholder="Output appears here… (editable)" spellcheck="false"></textarea>
+  </div>
+  <div class="preview-panel" id="previewPanel">
+    <div class="preview-body" id="previewBody"></div>
   </div>
 </div>
 
@@ -294,20 +284,18 @@
 
 <div class="info-bar" id="infoBar"></div>
 
-<!-- Preview panel -->
-<div class="preview-panel" id="previewPanel">
+<div class="panel stack-panel">
   <div class="panel-head">
-    <span class="panel-label">Preview</span>
-    <span class="badge" id="previewBadge">—</span>
+    <span class="panel-label">Added JSON List</span>
+    <button class="btn btn-copy" id="copyAddedBtn" onclick="copyAddedOutput()">Copy List</button>
   </div>
-  <div class="preview-body" id="previewBody">
-    <div class="preview-empty">Convert an SVG or edit the JSON output to see the template preview.</div>
-  </div>
+  <textarea id="addedOutput" placeholder="Added outputs appear here, split by comma + newline." spellcheck="false"></textarea>
 </div>
 
 <script>
 const svgInput  = document.getElementById('svgInput');
 const output    = document.getElementById('output');
+const addedOutput = document.getElementById('addedOutput');
 const pathCount = document.getElementById('pathCount');
 const infoBar   = document.getElementById('infoBar');
 
@@ -368,6 +356,36 @@ function copyOutput() {
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
   });
+}
+
+function addOutput() {
+  const item = output.value.trim();
+  if (!item) return;
+  const existing = addedOutput.value.trim();
+  addedOutput.value = existing ? existing + ',\n' + item : item;
+  const count = countAddedItems(addedOutput.value);
+  infoBar.innerHTML = 'Added <b>' + count + '</b> JSON output' + (count === 1 ? '' : 's') + ' to the list.';
+
+  const btn = document.getElementById('addBtn');
+  btn.textContent = 'Added';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Add'; btn.classList.remove('copied'); }, 1200);
+}
+
+function copyAddedOutput() {
+  const text = addedOutput.value.trim();
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyAddedBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy List'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+function countAddedItems(text) {
+  if (!text.trim()) return 0;
+  return text.split(/,\s*\n/).filter(Boolean).length;
 }
 
 // ── Rendering engine (matches index.html)
@@ -451,49 +469,30 @@ function parseOutput(text) {
 
 function updatePreview() {
   const body  = document.getElementById('previewBody');
-  const badge = document.getElementById('previewBadge');
   const text  = output.value.trim();
 
   if (!text) {
-    badge.textContent = '—';
-    body.innerHTML = '<div class="preview-empty">Convert an SVG or edit the JSON output to see the template preview.</div>';
+    body.innerHTML = '';
     return;
   }
 
   const result = parseOutput(text);
 
   if (!result || result.error) {
-    badge.textContent = 'invalid JSON';
-    body.innerHTML = '<div class="preview-empty">Invalid JSON.<div class="preview-error">' + (result ? escHtml(result.error) : '') + '</div></div>';
+    body.innerHTML = '';
     return;
   }
 
-  const {name, strokes} = result;
+  const {strokes} = result;
   if (!Array.isArray(strokes) || !strokes.length) {
-    badge.textContent = 'no strokes';
-    body.innerHTML = '<div class="preview-empty">No stroke data found in JSON.</div>';
+    body.innerHTML = '';
     return;
   }
 
-  // Count strokes and total points
-  const normalized = normalizePaths(strokes);
-  const strokeCount = normalized.length;
-  const ptCount = normalized.reduce((n, s) => n + s.length, 0);
-  badge.textContent = strokeCount + (strokeCount === 1 ? ' stroke' : ' strokes');
-
-  // Build preview DOM
   const SIZE = 260;
   body.innerHTML = `
     <div class="preview-canvas-wrap">
       <canvas id="previewCanvas" width="${SIZE}" height="${SIZE}"></canvas>
-    </div>
-    <div class="preview-info">
-      <h3 id="previewName">${escHtml(name)}</h3>
-      <div class="preview-stat">Strokes: <b>${strokeCount}</b></div>
-      <div class="preview-stat">Sample pts: <b>${ptCount}</b></div>
-      <div class="preview-stat" id="ptNote" style="color:var(--muted);font-size:11px;margin-top:8px;">
-        ${typeof strokes[0]==='string' ? 'SVG path strings — sampled at render time' : 'Coordinate arrays'}
-      </div>
     </div>`;
 
   const canvas = document.getElementById('previewCanvas');
